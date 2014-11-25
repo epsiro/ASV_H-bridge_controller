@@ -15,6 +15,8 @@
 
 #define RC_FREQ 50L
 
+#define NUMBER_OF_RC_CMD_TO_AVERAGE 8
+
 #define sec_to_tic(sec) sec*F_CPU
 #define CENTER_LEN 1.5e-3
 #define DEAD_BAND  0.04e-3
@@ -51,6 +53,7 @@ static int16_t max_pulse_width[2];
 
 static int8_t left_stick = 0;
 static int8_t right_stick = 0;
+static int8_t average_motor_thrust[2] = {0, 0};
 
 static volatile uint32_t number_of_rc_commands = 0;
 static volatile uint32_t number_of_runs_without_rc_command = 0;
@@ -309,10 +312,13 @@ combo_sticks() {
 void
 drive_motor(int8_t motor, int8_t motor_thrust ) {
 
-    /* Scale the pwm-value */
-    uint16_t pwm = (abs(motor_thrust)*PER)/127L;
+    /* Calculate moving average */
+    average_motor_thrust[motor] = ( (int32_t) (NUMBER_OF_RC_CMD_TO_AVERAGE - 1)*average_motor_thrust[motor] + motor_thrust)/NUMBER_OF_RC_CMD_TO_AVERAGE;
 
-    if (motor_thrust > 0) {
+    /* Scale the pwm-value */
+    uint16_t pwm = (abs(average_motor_thrust[motor])*PER)/127L;
+
+    if (average_motor_thrust[motor] > 0) {
 
         /* Drive forward */
         *drive[AH][motor] = OFF;
