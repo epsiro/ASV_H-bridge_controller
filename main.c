@@ -215,12 +215,6 @@ uart_init(void) {
     PORTD.DIRSET = PIN3_bm;
 
     /* Set the baud rate */
-    // USARTC1.BAUDCTRLA = (uint8_t) BAUD;
-    // USARTC1.BAUDCTRLB = ((USARTC1.BAUDCTRLB) & 0xF0) | ((BAUD >> 8) & 0x0F);
-    //USARTD0.BAUDCTRLA = 0x2E;
-    //USARTD0.BAUDCTRLB = 0x98;
-
-    /* Set the baud rate */
     uint16_t bsel = BSEL_D(BAUD_D);
     USARTD0.BAUDCTRLB = (bsel >> 8) & 0xFF;
     USARTD0.BAUDCTRLA = (uint8_t) bsel;
