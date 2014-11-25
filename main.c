@@ -375,13 +375,16 @@ ISR(TCC1_CCA_vect) {
     number_of_runs_without_rc_command = 0;
 
     if (rc_receiver_ready == TRUE) {
+
+        /* Turn on red LED to show that we get commands from RC receiver */
+        PORTD.OUTSET = PIN5_bm;
+
         left_stick = normalize_stick_position(&TCC1_CCA, LEFT_STICK);
 
     } else {
 
         /* Skip the first interrupts since the receiver is not stable then */
         if (++number_of_rc_commands >= 1000*RC_FREQ*2) {
-            PORTD.OUTSET = PIN4_bm;
             rc_receiver_ready = TRUE;
         }
     }
@@ -398,7 +401,6 @@ ISR(TCD0_OVF_vect) {
     /* Timeout if we do not get any rc commands.
      * Triggered after waiting for two missing commands */
     if (++number_of_runs_without_rc_command >= 2*(STATE_FREQ/RC_FREQ)) {
-        PORTD.OUTCLR = PIN4_bm;
         rc_receiver_ready = FALSE;
         number_of_rc_commands = 0;
     }
@@ -409,10 +411,18 @@ ISR(TCD0_OVF_vect) {
     //else
         combo_sticks();
     }
+
+    /* Turn off both LEDs, so they will blink when they are turned on */
+    PORTD.OUTCLR = PIN4_bm;
+    PORTD.OUTCLR = PIN5_bm;
 }
 
 ISR(USARTD0_RXC_vect) {
+
     if (rc_receiver_ready == FALSE) {
+
+        /* Turn on green LED to show that we get commands over UART */
+        PORTD.OUTSET = PIN4_bm;
 
         uint8_t motor;
         int8_t direction;
