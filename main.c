@@ -387,8 +387,9 @@ ISR(TCC1_CCB_vect) {
 
 ISR(TCD0_OVF_vect) {
 
-    /* Timeout if we do not get any rc commands */
-    if (++number_of_runs_without_rc_command >= 20) {
+    /* Timeout if we do not get any rc commands.
+     * Triggered after waiting for two missing commands */
+    if (++number_of_runs_without_rc_command >= 2*(STATE_FREQ/RC_FREQ)) {
         PORTD.OUTCLR = PIN4_bm;
         rc_receiver_ready = FALSE;
         number_of_rc_commands = 0;
