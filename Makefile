@@ -26,5 +26,8 @@ read:
 	$(AVRDUDE) -U eeprom:r:eeprom.dat:r
 	hd eeprom.dat
 
+depend:
+	@$(CC) -MM $(ALL_CFLAGS) *.c | sed 's/$$/ Makefile/'
+
 flash: all
 	$(AVRDUDE) -U flash:w:main.hex:i
