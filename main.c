@@ -372,7 +372,7 @@ ISR(TCC1_CCA_vect) {
     } else {
 
         /* Skip the first interrupts since the receiver is not stable then */
-        if (++number_of_rc_commands >= 200000) {
+        if (++number_of_rc_commands >= 1000*RC_FREQ*2) {
             PORTD.OUTSET = PIN4_bm;
             rc_receiver_ready = TRUE;
         }
