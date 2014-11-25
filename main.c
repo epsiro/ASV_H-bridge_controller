@@ -13,6 +13,8 @@
 #define STATE_FREQ 100L
 #define STATE_PER ((F_CPU/8)/STATE_FREQ)
 
+#define RC_FREQ 50L
+
 #define sec_to_tic(sec) sec*F_CPU
 #define CENTER_LEN 1.5e-3
 #define DEAD_BAND  0.04e-3
@@ -51,6 +53,7 @@ static int8_t left_stick = 0;
 static int8_t right_stick = 0;
 
 static volatile uint32_t number_of_rc_commands = 0;
+static volatile uint32_t number_of_runs_without_rc_command = 0;
 static volatile uint8_t rc_receiver_ready = FALSE;
 
 void
@@ -355,17 +358,17 @@ normalize_stick_position(int16_t * pulse_width, uint8_t stick) {
 
 ISR(TCC1_CCA_vect) {
 
+    number_of_runs_without_rc_command = 0;
+
     if (rc_receiver_ready == TRUE) {
-        PORTD.OUTSET = PIN4_bm;
         left_stick = normalize_stick_position(&TCC1_CCA, LEFT_STICK);
 
     } else {
 
         /* Skip the first interrupts since the receiver is not stable then */
-        if (number_of_rc_commands >= 200000) {
+        if (++number_of_rc_commands >= 200000) {
+            PORTD.OUTSET = PIN4_bm;
             rc_receiver_ready = TRUE;
-        } else {
-            number_of_rc_commands++;
         }
     }
 }
@@ -377,6 +380,14 @@ ISR(TCC1_CCB_vect) {
 }
 
 ISR(TCD0_OVF_vect) {
+
+    /* Timeout if we do not get any rc commands */
+    if (++number_of_runs_without_rc_command >= 20) {
+        PORTD.OUTCLR = PIN4_bm;
+        rc_receiver_ready = FALSE;
+        number_of_rc_commands = 0;
+    }
+
     if (rc_receiver_ready == TRUE) {
     //if (PORTE.IN & PIN2_bm)
         //single_sticks();
