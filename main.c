@@ -305,22 +305,28 @@ combo_sticks() {
     if (motor_thrust_right >  127) motor_thrust_right =  127;
     if (motor_thrust_right < -127) motor_thrust_right = -127;
 
-    drive_motor(LEFT_MOTOR,  (int8_t) motor_thrust_left);
-    drive_motor(RIGHT_MOTOR, (int8_t) motor_thrust_right);
+    drive_motor_lp(LEFT_MOTOR,  (int8_t) motor_thrust_left);
+    drive_motor_lp(RIGHT_MOTOR, (int8_t) motor_thrust_right);
 }
 
 void
-drive_motor(int8_t motor, int8_t motor_thrust ) {
+drive_motor_lp(int8_t motor, int8_t motor_thrust) {
 
     /* Calculate moving average */
     average_motor_thrust[motor] = ( (int32_t)
             (NUMBER_OF_RC_CMD_TO_AVERAGE - 1)*average_motor_thrust[motor]
             + motor_thrust)/NUMBER_OF_RC_CMD_TO_AVERAGE;
 
-    /* Scale the pwm-value */
-    uint16_t pwm = (abs(average_motor_thrust[motor])*PER)/127L;
+    drive_motor(motor, average_motor_thrust[motor]);
+}
 
-    if (average_motor_thrust[motor] > 0) {
+void
+drive_motor(int8_t motor, int8_t motor_thrust) {
+
+    /* Scale the pwm-value */
+    uint16_t pwm = (abs(motor_thrust)*PER)/127L;
+
+    if (motor_thrust > 0) {
 
         /* Drive forward */
         *drive[AH][motor] = OFF;
