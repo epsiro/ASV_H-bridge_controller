@@ -55,9 +55,15 @@ static int8_t left_stick = 0;
 static int8_t right_stick = 0;
 static int8_t average_motor_thrust[2] = {0, 0};
 
+static volatile int8_t uart_motor_thrust[2] = {0, 0};
+
 static volatile uint32_t number_of_rc_commands = 0;
 static volatile uint32_t number_of_runs_without_rc_command = 0;
 static volatile uint8_t rc_receiver_ready = FALSE;
+
+static volatile uint32_t number_of_uart_commands = 0;
+static volatile uint32_t number_of_runs_without_uart_command = 0;
+static volatile uint8_t uart_receiver_ready = FALSE;
 
 void
 clock_init() {
@@ -374,13 +380,9 @@ ISR(TCC1_CCA_vect) {
 
     number_of_runs_without_rc_command = 0;
 
+
     if (rc_receiver_ready == TRUE) {
-
-        /* Turn on red LED to show that we get commands from RC receiver */
-        PORTD.OUTSET = PIN5_bm;
-
-        left_stick = normalize_stick_position(&TCC1_CCA, LEFT_STICK);
-
+    left_stick = normalize_stick_position(&TCC1_CCA, LEFT_STICK);
     } else {
 
         /* Skip the first interrupts since the receiver is not stable then */
@@ -405,11 +407,36 @@ ISR(TCD0_OVF_vect) {
         number_of_rc_commands = 0;
     }
 
+#if 0
+    /* Timeout if we do not get any uart commands. */
+    if (++number_of_runs_without_uart_command >= STATE_FREQ) {
+        uart_receiver_ready = FALSE;
+        number_of_uart_commands = 0;
+    }
+#endif
+
     if (rc_receiver_ready == TRUE) {
     //if (PORTE.IN & PIN2_bm)
         //single_sticks();
     //else
+
+        /* Toggle red LED to show that we are using commands from RC receiver */
+        PORTD.OUTTGL = PIN5_bm;
+
         combo_sticks();
+
+    } else if (uart_receiver_ready == TRUE) {
+
+        /* Toggle green LED to show that we are using commands from UART */
+        PORTD.OUTTGL = PIN4_bm;
+
+        drive_motor(LEFT_MOTOR, uart_motor_thrust[LEFT_MOTOR]);
+        drive_motor(RIGHT_MOTOR, uart_motor_thrust[RIGHT_MOTOR]);
+
+    } else {
+
+        drive_motor(LEFT_MOTOR, 0);
+        drive_motor(RIGHT_MOTOR, 0);
     }
 
     /* Turn off both LEDs, so they will blink when they are turned on */
@@ -419,50 +446,52 @@ ISR(TCD0_OVF_vect) {
 
 ISR(USARTD0_RXC_vect) {
 
-    if (rc_receiver_ready == FALSE) {
+    uint8_t motor;
+    int8_t direction;
 
-        /* Turn on green LED to show that we get commands over UART */
-        PORTD.OUTSET = PIN4_bm;
+    uint8_t command = USARTD0.DATA;
 
-        uint8_t motor;
-        int8_t direction;
+    /* Get the two MSB of command */
+    switch (command >> 6) {
 
-        uint8_t command = USARTD0.DATA;
+        case 0:
+            motor = LEFT_MOTOR;
+            direction = BACKWARD;
+            break;
 
-        /* Get the two MSB of command */
-        switch (command >> 6) {
+        case 1:
+            motor = LEFT_MOTOR;
+            direction = FORWARD;
+            break;
 
-            case 0:
-                motor = LEFT_MOTOR;
-                direction = BACKWARD;
-                break;
+        case 2:
+            motor = RIGHT_MOTOR;
+            direction = BACKWARD;
+            break;
 
-            case 1:
-                motor = LEFT_MOTOR;
-                direction = FORWARD;
-                break;
+        case 3:
+            motor = RIGHT_MOTOR;
+            direction = FORWARD;
+            break;
+    }
 
-            case 2:
-                motor = RIGHT_MOTOR;
-                direction = BACKWARD;
-                break;
+    /*
+     * Set the left or right motor thrust, with the correct direction and speed.
+     *
+     * 0x3f = 0b00111111 and masks out the speed from the command.  This
+     * speed (0..63) is then scaled to (0..127) by multiplying by two and
+     * adding one.  The direction variable is positiv for forward and
+     * negative for backward direction, and thus give the final speed as an
+     * int8_t of range -127..127
+     *
+     */
+    uart_motor_thrust[motor] = direction*(command & 0x3f)*2 + 1;
 
-            case 3:
-                motor = RIGHT_MOTOR;
-                direction = FORWARD;
-                break;
+    if (uart_receiver_ready == FALSE) {
+
+        /* Skip the first interrupts since the receiver is not stable then */
+        if (++number_of_uart_commands >= 100) {
+            uart_receiver_ready = TRUE;
         }
-
-        /*
-         * Drive the left or right motor, with the correct direction and speed.
-         *
-         * 0x3f = 0b00111111 and masks out the speed from the command.  This
-         * speed (0..63) is then scaled to (0..127) by multiplying by two and
-         * adding one.  The direction variable is positiv for forward and
-         * negative for backward direction, and thus give the final speed as an
-         * int8_t of range -127..127
-         *
-         */
-        drive_motor(motor, direction*(command & 0x3f)*2 + 1 );
     }
 }
