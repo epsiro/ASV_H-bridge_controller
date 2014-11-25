@@ -313,7 +313,9 @@ void
 drive_motor(int8_t motor, int8_t motor_thrust ) {
 
     /* Calculate moving average */
-    average_motor_thrust[motor] = ( (int32_t) (NUMBER_OF_RC_CMD_TO_AVERAGE - 1)*average_motor_thrust[motor] + motor_thrust)/NUMBER_OF_RC_CMD_TO_AVERAGE;
+    average_motor_thrust[motor] = ( (int32_t)
+            (NUMBER_OF_RC_CMD_TO_AVERAGE - 1)*average_motor_thrust[motor]
+            + motor_thrust)/NUMBER_OF_RC_CMD_TO_AVERAGE;
 
     /* Scale the pwm-value */
     uint16_t pwm = (abs(average_motor_thrust[motor])*PER)/127L;
@@ -438,10 +440,11 @@ ISR(USARTD0_RXC_vect) {
         /*
          * Drive the left or right motor, with the correct direction and speed.
          *
-         * 0x3f = 0b00111111 and masks out the speed from the command.
-         * This speed (0..63) is then scaled to (0..127) by multiplying by two and adding one.
-         * The direction variable is positiv for forward and negative for backward
-         * direction, and thus give the final speed as an int8_t of range -127..127
+         * 0x3f = 0b00111111 and masks out the speed from the command.  This
+         * speed (0..63) is then scaled to (0..127) by multiplying by two and
+         * adding one.  The direction variable is positiv for forward and
+         * negative for backward direction, and thus give the final speed as an
+         * int8_t of range -127..127
          *
          */
         drive_motor(motor, direction*(command & 0x3f)*2 + 1 );
