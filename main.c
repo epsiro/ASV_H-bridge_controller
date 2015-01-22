@@ -400,6 +400,10 @@ ISR(TCC1_CCB_vect) {
 
 ISR(TCD0_OVF_vect) {
 
+    /* Turn off both LEDs, so they will light only when they should */
+    PORTD.OUTCLR = PIN4_bm;
+    PORTD.OUTCLR = PIN5_bm;
+
     /* Timeout if we do not get any rc commands.
      * Triggered after waiting for two missing commands */
     if (++number_of_runs_without_rc_command >= 2*(STATE_FREQ/RC_FREQ)) {
@@ -407,28 +411,26 @@ ISR(TCD0_OVF_vect) {
         number_of_rc_commands = 0;
     }
 
-#if 0
     /* Timeout if we do not get any uart commands. */
-    if (++number_of_runs_without_uart_command >= STATE_FREQ) {
+    if (++number_of_runs_without_uart_command >= 20) {
         uart_receiver_ready = FALSE;
         number_of_uart_commands = 0;
     }
-#endif
 
     if (rc_receiver_ready == TRUE) {
     //if (PORTE.IN & PIN2_bm)
         //single_sticks();
     //else
 
-        /* Toggle red LED to show that we are using commands from RC receiver */
-        PORTD.OUTTGL = PIN5_bm;
+        /* Set red LED to show that we are using commands from RC receiver */
+        PORTD.OUTSET = PIN5_bm;
 
         combo_sticks();
 
     } else if (uart_receiver_ready == TRUE) {
 
-        /* Toggle green LED to show that we are using commands from UART */
-        PORTD.OUTTGL = PIN4_bm;
+        /* Set green LED to show that we are using commands from UART */
+        PORTD.OUTSET = PIN4_bm;
 
         drive_motor(LEFT_MOTOR, uart_motor_thrust[LEFT_MOTOR]);
         drive_motor(RIGHT_MOTOR, uart_motor_thrust[RIGHT_MOTOR]);
@@ -438,13 +440,11 @@ ISR(TCD0_OVF_vect) {
         drive_motor(LEFT_MOTOR, 0);
         drive_motor(RIGHT_MOTOR, 0);
     }
-
-    /* Turn off both LEDs, so they will blink when they are turned on */
-    PORTD.OUTCLR = PIN4_bm;
-    PORTD.OUTCLR = PIN5_bm;
 }
 
 ISR(USARTD0_RXC_vect) {
+
+    number_of_runs_without_uart_command = 0;
 
     uint8_t motor;
     int8_t direction;
